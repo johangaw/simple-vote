@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import Pusher from "pusher-js";
 import { getClientConfig } from "../../utils/config";
 import { Voting, VotingOption, votingUpdated } from "../../utils/pusherEvents";
@@ -26,11 +26,25 @@ const useVoting = (votingId: string) => {
   return voting;
 };
 
+const useClientId = () => {
+  const storageKey = "simple-vote-client-id";
+
+  let clientId = localStorage.getItem(storageKey);
+  if (!clientId) {
+    clientId = window.crypto.randomUUID();
+    localStorage.setItem(storageKey, clientId);
+  }
+
+  return clientId;
+};
+
 const VotingPage: FC<VotingPageProps> = () => {
   const router = useRouter();
+  const clientId = useClientId();
   const votingId = router.query.votingId as string;
   const voting = useVoting(votingId);
   const addOptionToVoting = trpc.useMutation(["addOptionToVoting"]);
+  const vote = trpc.useMutation(["vote"]);
 
   if (!voting) {
     return <h1>Loading...</h1>;
@@ -55,16 +69,28 @@ const VotingPage: FC<VotingPageProps> = () => {
       </form>
       <div>
         {voting.options.map((opt) => (
-          <Option key={opt.id} option={opt} />
+          <Option
+            key={opt.id}
+            option={opt}
+            vote={() => {
+              vote.mutate({ clientId, optionId: opt.id, votingId });
+            }}
+          />
         ))}
       </div>
     </>
   );
 };
 
-const Option: FC<{ option: VotingOption }> = ({ option }) => (
+const Option: FC<{ option: VotingOption; vote: () => void }> = ({
+  option,
+  vote,
+}) => (
   <div>
-    <h3>{option.name}</h3>
+    <h3>
+      {option.name} ({option.votes.length})
+    </h3>
+    <button onClick={vote}>Vote</button>
   </div>
 );
 
