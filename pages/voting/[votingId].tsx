@@ -29,28 +29,33 @@ const useVoting = (votingId: string) => {
   return voting;
 };
 
-const getClientId = () => {
+const useClientId = () => {
   const storageKey = "simple-vote-client-id";
 
-  let clientId = localStorage.getItem(storageKey);
-  if (!clientId) {
-    clientId = window.crypto.randomUUID();
-    localStorage.setItem(storageKey, clientId);
-  }
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let clientId = localStorage.getItem(storageKey);
+    if (!clientId) {
+      clientId = window.crypto.randomUUID();
+      localStorage.setItem(storageKey, clientId);
+    }
+    setClientId(clientId);
+  }, []);
 
   return clientId;
 };
 
 const VotingPage: FC<VotingPageProps> = () => {
   const router = useRouter();
+  const clientId = useClientId();
   const votingId = router.query.votingId as string;
   const voting = useVoting(votingId);
   const addOptionToVoting = trpc.useMutation(["addOptionToVoting"]);
-  const vote = trpc.useMutation(["vote"]);
-  const unVote = trpc.useMutation(["unVote"]);
+  const selectVote = trpc.useMutation(["selectVote"]);
   const toggleShowVotes = trpc.useMutation(["toggleShowVotes"]);
 
-  if (!voting) {
+  if (!voting || !clientId) {
     return <h1>Loading...</h1>;
   }
 
@@ -61,7 +66,7 @@ const VotingPage: FC<VotingPageProps> = () => {
         <div
           style={{
             height: "auto",
-            maxWidth: 64 * 2,
+            maxWidth: 100,
             width: "100%",
           }}
         >
@@ -96,16 +101,10 @@ const VotingPage: FC<VotingPageProps> = () => {
             key={opt.id}
             showVotes={voting.showResult}
             option={opt}
-            vote={() => {
-              vote.mutate({
-                clientId: getClientId(),
-                optionId: opt.id,
-                votingId,
-              });
-            }}
-            unVote={() => {
-              unVote.mutate({
-                clientId: getClientId(),
+            selected={opt.votes.includes(clientId)}
+            select={() => {
+              selectVote.mutate({
+                clientId,
                 optionId: opt.id,
                 votingId,
               });
@@ -129,16 +128,17 @@ const VotingPage: FC<VotingPageProps> = () => {
 const Option: FC<{
   option: VotingOption;
   showVotes: boolean;
-  vote: () => void;
-  unVote: () => void;
-}> = ({ option, vote, unVote, showVotes }) => (
+  select: () => void;
+  selected: boolean;
+}> = ({ option, select, showVotes, selected }) => (
   <div>
     <h3>
       {option.name}
       {showVotes ? ` (${option.votes.length})` : null}
     </h3>
-    <button onClick={vote}>Vote</button>
-    <button onClick={unVote}>Unvote</button>
+    <button onClick={select} disabled={selected}>
+      Select
+    </button>
   </div>
 );
 

@@ -135,6 +135,51 @@ export const appRouter = trpc
       return newVoting;
     },
   })
+  .mutation("selectVote", {
+    input: z.object({
+      votingId: z.string(),
+      optionId: z.string(),
+      clientId: z.string(),
+    }),
+    async resolve({ input }) {
+      const voting = await getCurrentVoting(input.votingId);
+
+      if (!voting) {
+        throw new trpc.TRPCError({
+          code: "NOT_FOUND",
+          message: "no voting found",
+        });
+      }
+
+      const option = voting.options.find((o) => o.id === input.optionId);
+      if (!option) {
+        throw new trpc.TRPCError({
+          code: "NOT_FOUND",
+          message: "no option found",
+        });
+      }
+
+      const newVoting = {
+        ...voting,
+        options: voting.options.map((opt) =>
+          opt === option
+            ? {
+                ...opt,
+                votes: Array.from(new Set(option.votes.concat(input.clientId))),
+              }
+            : {
+                ...opt,
+                votes: option.votes.filter(
+                  (clientId) => clientId !== input.clientId
+                ),
+              }
+        ),
+      };
+      await updateVoting(newVoting);
+
+      return newVoting;
+    },
+  })
   .mutation("toggleShowVotes", {
     input: z.object({
       votingId: z.string(),
