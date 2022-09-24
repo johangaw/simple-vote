@@ -2,52 +2,8 @@ import * as trpc from "@trpc/server";
 import * as trpcNext from "@trpc/server/adapters/next";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import Pusher from "pusher";
-import { getServerConfig } from "../../../utils/config";
-import {
-  Voting,
-  VotingOption,
-  votingUpdated,
-} from "../../../utils/pusherEvents";
-
-const config = getServerConfig();
-const pusher = new Pusher({
-  appId: config.pusher.appId,
-  key: config.pusher.appKey,
-  secret: config.pusher.appSecret,
-  cluster: config.pusher.cluster,
-  useTLS: true,
-});
-
-const updateVoting = async (
-  id: string,
-  voting: Partial<Omit<Voting, "id">>
-) => {
-  const channel = `cache-${id}`;
-  const currentVoting: Partial<Voting> = await pusher
-    .get({
-      path: `/channels/${channel}`,
-      params: { info: "cache" },
-    })
-    .then((res) =>
-      res.status != 200
-        ? Promise.reject(`unable to get cache for ${channel}`)
-        : res
-    )
-    .then((res) => res.json())
-    .then((body) => {
-      console.log(body);
-      return body.cache;
-    })
-    .then((cache) => (!!cache ? JSON.parse(cache.data) : {}));
-
-  return pusher.trigger(channel, votingUpdated, {
-    ...currentVoting,
-    ...voting,
-    options: (currentVoting.options ?? []).concat(voting.options ?? []),
-    id,
-  } as Voting);
-};
+import { updateVoting, getCurrentVoting } from "../../../server/pusher";
+import { VotingOption } from "../../../utils/pusherEvents";
 
 export const appRouter = trpc
   .router()
@@ -58,7 +14,8 @@ export const appRouter = trpc
     async resolve({ input }) {
       const id = randomUUID();
 
-      await updateVoting(id, {
+      await updateVoting({
+        id,
         name: input.name,
         options: [],
       });
@@ -73,13 +30,25 @@ export const appRouter = trpc
       votingId: z.string(),
       optionName: z.string(),
     }),
-    resolve({ input }) {
+    async resolve({ input }) {
       const option: VotingOption = {
         id: randomUUID(),
         name: input.optionName,
       };
 
-      updateVoting(input.votingId, { options: [option] });
+      const currentVoting = await getCurrentVoting(input.votingId);
+
+      if (!currentVoting) {
+        throw Error("Could not find voting value");
+      }
+
+      const newVoting = {
+        ...currentVoting,
+        options: currentVoting.options.concat(option),
+      };
+      updateVoting(newVoting);
+
+      return newVoting;
     },
   });
 

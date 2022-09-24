@@ -47,7 +47,8 @@ const VotingPage: FC<VotingPageProps> = () => {
         }}
       >
         <label>
-          Option name
+          Option name:
+          <br />
           <input name="optionName" />
         </label>
         <button>Add</button>
