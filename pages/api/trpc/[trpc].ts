@@ -1,7 +1,6 @@
 import * as trpc from "@trpc/server";
 import * as trpcNext from "@trpc/server/adapters/next";
 import { randomUUID } from "crypto";
-import { string } from "prop-types";
 import { z } from "zod";
 import { updateVoting, getCurrentVoting } from "../../../server/pusher";
 import { VotingOption } from "../../../utils/pusherEvents";

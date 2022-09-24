@@ -21,12 +21,14 @@ const useVoting = (votingId: string) => {
     channel.bind(votingUpdated, (data: Voting) => {
       setVoting(data);
     });
+
+    () => channel.unsubscribe();
   }, [votingId]);
 
   return voting;
 };
 
-const useClientId = () => {
+const getClientId = () => {
   const storageKey = "simple-vote-client-id";
 
   let clientId = localStorage.getItem(storageKey);
@@ -40,7 +42,6 @@ const useClientId = () => {
 
 const VotingPage: FC<VotingPageProps> = () => {
   const router = useRouter();
-  const clientId = useClientId();
   const votingId = router.query.votingId as string;
   const voting = useVoting(votingId);
   const addOptionToVoting = trpc.useMutation(["addOptionToVoting"]);
@@ -76,10 +77,18 @@ const VotingPage: FC<VotingPageProps> = () => {
             showVotes={voting.showResult}
             option={opt}
             vote={() => {
-              vote.mutate({ clientId, optionId: opt.id, votingId });
+              vote.mutate({
+                clientId: getClientId(),
+                optionId: opt.id,
+                votingId,
+              });
             }}
             unVote={() => {
-              unVote.mutate({ clientId, optionId: opt.id, votingId });
+              unVote.mutate({
+                clientId: getClientId(),
+                optionId: opt.id,
+                votingId,
+              });
             }}
           />
         ))}
