@@ -45,6 +45,7 @@ const VotingPage: FC<VotingPageProps> = () => {
   const voting = useVoting(votingId);
   const addOptionToVoting = trpc.useMutation(["addOptionToVoting"]);
   const vote = trpc.useMutation(["vote"]);
+  const unVote = trpc.useMutation(["unVote"]);
 
   if (!voting) {
     return <h1>Loading...</h1>;
@@ -75,6 +76,9 @@ const VotingPage: FC<VotingPageProps> = () => {
             vote={() => {
               vote.mutate({ clientId, optionId: opt.id, votingId });
             }}
+            unVote={() => {
+              unVote.mutate({ clientId, optionId: opt.id, votingId });
+            }}
           />
         ))}
       </div>
@@ -82,15 +86,17 @@ const VotingPage: FC<VotingPageProps> = () => {
   );
 };
 
-const Option: FC<{ option: VotingOption; vote: () => void }> = ({
-  option,
-  vote,
-}) => (
+const Option: FC<{
+  option: VotingOption;
+  vote: () => void;
+  unVote: () => void;
+}> = ({ option, vote, unVote }) => (
   <div>
     <h3>
       {option.name} ({option.votes.length})
     </h3>
     <button onClick={vote}>Vote</button>
+    <button onClick={unVote}>Unvote</button>
   </div>
 );
 
