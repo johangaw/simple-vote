@@ -48,7 +48,7 @@ export const appRouter = trpc
         ...currentVoting,
         options: currentVoting.options.concat(option),
       };
-      updateVoting(newVoting);
+      await updateVoting(newVoting);
 
       return newVoting;
     },
