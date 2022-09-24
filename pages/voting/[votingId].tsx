@@ -4,6 +4,7 @@ import { FC, useEffect, useState } from "react";
 import { getClientConfig } from "../../utils/config";
 import { Voting, VotingOption, votingUpdated } from "../../utils/pusherEvents";
 import { trpc } from "../../utils/trpc";
+import QRCode from "react-qr-code";
 
 interface VotingPageProps {}
 
@@ -56,6 +57,25 @@ const VotingPage: FC<VotingPageProps> = () => {
   return (
     <>
       <h1>{voting.name}</h1>
+      <p>
+        <div
+          style={{
+            height: "auto",
+            maxWidth: 64 * 2,
+            width: "100%",
+          }}
+        >
+          <QRCode
+            size={256}
+            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+            value={`${
+              process.env.NEXT_PUBLIC_VERCEL_URL ?? "http://localhost:3000"
+            }/voting/${votingId}`}
+            viewBox={`0 0 256 256`}
+          />
+        </div>
+      </p>
+
       <form
         onSubmit={(ev) => {
           ev.preventDefault();
