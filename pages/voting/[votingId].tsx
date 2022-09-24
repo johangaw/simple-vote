@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
-import { FC, useEffect, useRef, useState } from "react";
 import Pusher from "pusher-js";
+import { FC, useEffect, useState } from "react";
 import { getClientConfig } from "../../utils/config";
 import { Voting, VotingOption, votingUpdated } from "../../utils/pusherEvents";
 import { trpc } from "../../utils/trpc";
@@ -46,6 +46,7 @@ const VotingPage: FC<VotingPageProps> = () => {
   const addOptionToVoting = trpc.useMutation(["addOptionToVoting"]);
   const vote = trpc.useMutation(["vote"]);
   const unVote = trpc.useMutation(["unVote"]);
+  const toggleShowVotes = trpc.useMutation(["toggleShowVotes"]);
 
   if (!voting) {
     return <h1>Loading...</h1>;
@@ -72,6 +73,7 @@ const VotingPage: FC<VotingPageProps> = () => {
         {voting.options.map((opt) => (
           <Option
             key={opt.id}
+            showVotes={voting.showResult}
             option={opt}
             vote={() => {
               vote.mutate({ clientId, optionId: opt.id, votingId });
@@ -82,18 +84,29 @@ const VotingPage: FC<VotingPageProps> = () => {
           />
         ))}
       </div>
+      <p>
+        <button
+          onClick={() => {
+            toggleShowVotes.mutate({ votingId });
+          }}
+        >
+          {voting.showResult ? "Hide Votes" : "Show Votes"}
+        </button>
+      </p>
     </>
   );
 };
 
 const Option: FC<{
   option: VotingOption;
+  showVotes: boolean;
   vote: () => void;
   unVote: () => void;
-}> = ({ option, vote, unVote }) => (
+}> = ({ option, vote, unVote, showVotes }) => (
   <div>
     <h3>
-      {option.name} ({option.votes.length})
+      {option.name}
+      {showVotes ? ` (${option.votes.length})` : null}
     </h3>
     <button onClick={vote}>Vote</button>
     <button onClick={unVote}>Unvote</button>

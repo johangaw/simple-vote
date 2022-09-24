@@ -1,6 +1,7 @@
 export interface Voting {
   id: string;
   name: string;
+  showResult: boolean;
   options: VotingOption[];
 }
 

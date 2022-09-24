@@ -18,6 +18,7 @@ export const appRouter = trpc
       await updateVoting({
         id,
         name: input.name,
+        showResult: false,
         options: [],
       });
 
@@ -129,6 +130,29 @@ export const appRouter = trpc
               }
             : opt
         ),
+      };
+      await updateVoting(newVoting);
+
+      return newVoting;
+    },
+  })
+  .mutation("toggleShowVotes", {
+    input: z.object({
+      votingId: z.string(),
+    }),
+    async resolve({ input }) {
+      const voting = await getCurrentVoting(input.votingId);
+
+      if (!voting) {
+        throw new trpc.TRPCError({
+          code: "NOT_FOUND",
+          message: "no voting found",
+        });
+      }
+
+      const newVoting = {
+        ...voting,
+        showResult: !voting.showResult,
       };
       await updateVoting(newVoting);
 
