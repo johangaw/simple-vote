@@ -15,7 +15,7 @@ export const NewVoting: FC<NewVotingProps> = () => {
         const name = (ev.target as HTMLFormElement).votingName.value;
         const voting = await createVoting.mutateAsync({ name });
 
-        router.push(`voting/${voting.id}`);
+        router.push(`voting/${voting.channel}`);
       }}
     >
       <input name="votingName" />
