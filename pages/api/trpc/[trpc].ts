@@ -8,11 +8,11 @@ export const appRouter = trpc.router().mutation("createVoting", {
     name: z.string(),
   }),
   resolve({ input }) {
-    const votingId = randomUUID();
+    const id = randomUUID();
     return {
-      votingId,
-      votingName: input.name,
-      votingChannel: votingId,
+      id,
+      name: input.name,
+      channel: id,
     };
   },
 });
