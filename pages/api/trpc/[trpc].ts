@@ -3,7 +3,7 @@ import * as trpcNext from "@trpc/server/adapters/next";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { updateVoting, getCurrentVoting } from "../../../server/pusher";
-import { VotingOption } from "../../../utils/pusherEvents";
+import { ClientVote, Voting, VotingOption } from "../../../utils/pusherEvents";
 
 export const appRouter = trpc
   .router()
@@ -58,6 +58,7 @@ export const appRouter = trpc
       votingId: z.string(),
       optionId: z.string(),
       clientId: z.string(),
+      clientName: z.string(),
     }),
     async resolve({ input }) {
       const voting = await getCurrentVoting(input.votingId);
@@ -77,19 +78,22 @@ export const appRouter = trpc
         });
       }
 
+      const onlyOthers = (vote: ClientVote) => vote.clientId !== input.clientId;
+
       const newVoting = {
         ...voting,
         options: voting.options.map((opt) =>
-          opt === option
+          opt.id === option.id
             ? {
                 ...opt,
-                votes: Array.from(new Set(option.votes.concat(input.clientId))),
+                votes: opt.votes.filter(onlyOthers).concat({
+                  clientId: input.clientId,
+                  clientName: input.clientName,
+                }),
               }
             : {
                 ...opt,
-                votes: option.votes.filter(
-                  (clientId) => clientId !== input.clientId
-                ),
+                votes: opt.votes.filter(onlyOthers),
               }
         ),
       };
@@ -115,6 +119,38 @@ export const appRouter = trpc
       const newVoting = {
         ...voting,
         showResult: !voting.showResult,
+      };
+      await updateVoting(newVoting);
+
+      return newVoting;
+    },
+  })
+  .mutation("updateName", {
+    input: z.object({
+      votingId: z.string(),
+      clientId: z.string(),
+      clientName: z.string(),
+    }),
+    async resolve({ input }) {
+      const voting = await getCurrentVoting(input.votingId);
+
+      if (!voting) {
+        throw new trpc.TRPCError({
+          code: "NOT_FOUND",
+          message: "no voting found",
+        });
+      }
+
+      const newVoting: Voting = {
+        ...voting,
+        options: voting.options.map((o) => ({
+          ...o,
+          votes: o.votes.map((v) =>
+            v.clientId === input.clientId
+              ? { ...v, clientName: input.clientName }
+              : v
+          ),
+        })),
       };
       await updateVoting(newVoting);
 

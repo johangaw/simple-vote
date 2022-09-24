@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 import Pusher from "pusher-js";
-import { FC, useEffect, useState } from "react";
+import { FC, useCallback, useEffect, useState } from "react";
 import { getClientConfig } from "../../utils/config";
 import { Voting, VotingOption, votingUpdated } from "../../utils/pusherEvents";
 import { trpc } from "../../utils/trpc";
@@ -29,34 +29,64 @@ const useVoting = (votingId: string) => {
   return voting;
 };
 
-const useClientId = () => {
-  const storageKey = "simple-vote-client-id";
+const useClient = () => {
+  const idStorageKey = "simple-vote-client-id";
+  const nameStorageKey = "simple-vote-client-name";
 
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string>("");
+  const [clientName, setClientName] = useState("");
 
   useEffect(() => {
-    let clientId = localStorage.getItem(storageKey);
+    let clientId = localStorage.getItem(idStorageKey);
     if (!clientId) {
       clientId = window.crypto.randomUUID();
-      localStorage.setItem(storageKey, clientId);
+      localStorage.setItem(idStorageKey, clientId);
     }
     setClientId(clientId);
+
+    setClientName(localStorage.getItem(nameStorageKey) ?? "");
   }, []);
 
-  return clientId;
+  const storeClientName = useCallback((newName: string) => {
+    localStorage.setItem(nameStorageKey, newName);
+    setClientName(newName);
+  }, []);
+
+  return { clientId, clientName, setClientName: storeClientName };
 };
 
 const VotingPage: FC<VotingPageProps> = () => {
   const router = useRouter();
-  const clientId = useClientId();
+  const { clientId, clientName, setClientName } = useClient();
   const votingId = router.query.votingId as string;
   const voting = useVoting(votingId);
   const addOptionToVoting = trpc.useMutation(["addOptionToVoting"]);
   const selectVote = trpc.useMutation(["selectVote"]);
   const toggleShowVotes = trpc.useMutation(["toggleShowVotes"]);
+  const updateName = trpc.useMutation(["updateName"]);
 
   if (!voting || !clientId) {
     return <h1>Loading...</h1>;
+  }
+
+  if (!clientName) {
+    return (
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          const clientName = (ev.target as HTMLFormElement).clientName.value;
+          setClientName(clientName);
+          updateName.mutate({ clientId, clientName, votingId });
+        }}
+      >
+        <label>
+          What&apos;s your name?
+          <br />
+          <input name="clientName" />
+        </label>
+        <button>Submit</button>
+      </form>
+    );
   }
 
   return (
@@ -74,11 +104,21 @@ const VotingPage: FC<VotingPageProps> = () => {
             size={256}
             style={{ height: "auto", maxWidth: "100%", width: "100%" }}
             value={`${
-              process.env.NEXT_PUBLIC_VERCEL_URL ?? "http://localhost:3000"
+              process.env.NEXT_PUBLIC_HOST_URL ?? "http://localhost:3000"
             }/voting/${votingId}`}
             viewBox={`0 0 256 256`}
           />
         </div>
+      </p>
+      <p>
+        <button
+          onClick={() => {
+            toggleShowVotes.mutate({ votingId });
+          }}
+        >
+          {voting.showResult ? "Hide Votes" : "Show Votes"}
+        </button>
+        <button onClick={() => setClientName("")}>Change name</button>
       </p>
 
       <form
@@ -89,22 +129,23 @@ const VotingPage: FC<VotingPageProps> = () => {
         }}
       >
         <label>
-          Option name:
+          New option:
           <br />
           <input name="optionName" />
         </label>
         <button>Add</button>
       </form>
-      <div>
+      <div style={{ paddingTop: "24px" }}>
         {voting.options.map((opt) => (
           <Option
             key={opt.id}
             showVotes={voting.showResult}
             option={opt}
-            selected={opt.votes.includes(clientId)}
+            selected={opt.votes.map((cv) => cv.clientId).includes(clientId)}
             select={() => {
               selectVote.mutate({
                 clientId,
+                clientName,
                 optionId: opt.id,
                 votingId,
               });
@@ -112,15 +153,6 @@ const VotingPage: FC<VotingPageProps> = () => {
           />
         ))}
       </div>
-      <p>
-        <button
-          onClick={() => {
-            toggleShowVotes.mutate({ votingId });
-          }}
-        >
-          {voting.showResult ? "Hide Votes" : "Show Votes"}
-        </button>
-      </p>
     </>
   );
 };
@@ -132,13 +164,22 @@ const Option: FC<{
   selected: boolean;
 }> = ({ option, select, showVotes, selected }) => (
   <div>
-    <h3>
-      {option.name}
-      {showVotes ? ` (${option.votes.length})` : null}
-    </h3>
-    <button onClick={select} disabled={selected}>
-      Select
+    <button
+      onClick={select}
+      style={{ background: "transparent", border: "none", cursor: "pointer" }}
+    >
+      <h2 style={{ textDecoration: selected ? "underline" : "none" }}>
+        {option.name}
+        {showVotes ? ` (${option.votes.length})` : null}
+      </h2>
     </button>
+    {showVotes && (
+      <ul style={{ margin: 0 }}>
+        {option.votes.map((v, i) => (
+          <li key={i}>{v.clientName}</li>
+        ))}
+      </ul>
+    )}
   </div>
 );
 

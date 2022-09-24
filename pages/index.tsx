@@ -7,18 +7,21 @@ const Home: NextPage = () => {
   const router = useRouter();
 
   return (
-    <form
-      onSubmit={async (ev) => {
-        ev.preventDefault();
-        const name = (ev.target as HTMLFormElement).votingName.value;
-        const voting = await createVoting.mutateAsync({ name });
+    <>
+      <h1>Create a new Voting</h1>
+      <form
+        onSubmit={async (ev) => {
+          ev.preventDefault();
+          const name = (ev.target as HTMLFormElement).votingName.value;
+          const voting = await createVoting.mutateAsync({ name });
 
-        router.push(`voting/${voting.id}`);
-      }}
-    >
-      <input name="votingName" />
-      <button>Create</button>
-    </form>
+          router.push(`voting/${voting.id}`);
+        }}
+      >
+        <input name="votingName" />
+        <button>Create</button>
+      </form>
+    </>
   );
 };
 

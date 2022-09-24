@@ -4,7 +4,19 @@ import { withTRPC } from "@trpc/next";
 import type { AppRouter } from "./api/trpc/[trpc]";
 
 function MyApp({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />;
+  return (
+    <main
+      style={{
+        maxWidth: "380px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <Component {...pageProps} />
+    </main>
+  );
 }
 
 export default withTRPC<AppRouter>({

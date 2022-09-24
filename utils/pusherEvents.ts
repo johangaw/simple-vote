@@ -8,7 +8,12 @@ export interface Voting {
 export interface VotingOption {
   id: string;
   name: string;
-  votes: string[];
+  votes: ClientVote[];
+}
+
+export interface ClientVote {
+  clientId: string;
+  clientName: string;
 }
 
 export const votingUpdated = "votingUpdated";
